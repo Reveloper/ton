@@ -58,7 +58,8 @@ NodeActor::NodeActor(PeerId self_id, ton::Torrent torrent, td::unique_ptr<Callba
 }
 
 void NodeActor::start_peer(PeerId peer_id, td::Promise<td::actor::ActorId<PeerActor>> promise) {
-  peers_[peer_id];
+  peers_[peer_id].state->peer_online_ = true;
+  will_upload_at_ = td::Timestamp::now();
   loop();
   auto it = peers_.find(peer_id);
   if (it == peers_.end() || it->second.actor.empty()) {
@@ -185,7 +186,7 @@ void NodeActor::loop_will_upload() {
     auto &state = it.second.state;
     bool needed = false;
     if (state->peer_state_ready_) {
-      needed = state->peer_state_.load().want_download;
+      needed = state->peer_state_.load().want_download && state->peer_online_;
     }
     peers.emplace_back(!needed, !state->node_state_.load().want_download, -it.second.download_speed.speed(), it.first);
   }
